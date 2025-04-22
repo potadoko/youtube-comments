@@ -1,36 +1,67 @@
-# YouTube Sentiment Analysis 👍👎😊
+# YouTube Comments Downloader 💬
 
-This project provides a web application for sentiment analysis of YouTube comments. It allows users to input a YouTube link and analyzes the sentiment of the comments associated with that video. The application also displays video information, channel information, and visualizations of the sentiment analysis results.
+This project provides a web application for downloading YouTube comments. It allows users to input a YouTube link and retrieves the comments associated with that video. The application also displays video information and channel information.
 
 ## Features ✨
 
 - Extracts the video ID from a YouTube link.
 - Retrieves comments from the specified YouTube video and saves them to a CSV file. 💬📑
-- Performs sentiment analysis on the comments using the VADER (Valence Aware Dictionary and sEntiment Reasoner) sentiment analysis tool. 😃😠😐
-- Generates bar charts and scatter plots to visualize the sentiment analysis results. 📊📈
 - Retrieves video and channel information from the YouTube API. 📺🔍
 - Provides an interactive web interface using Streamlit. 🌐✨
+- Allows downloading the comments as a CSV file. 📥
 
 ## Installation 🛠️
 
 1. Clone the repository:
 
-2. Install the required dependencies:
+   ```
+   git clone https://github.com/yourusername/youtube-comment-sentimental-analysis.git
+   cd youtube-comment-sentimental-analysis
+   ```
 
-3. Obtain a YouTube Data API key from the [Google Cloud Console](https://console.cloud.google.com/) and replace `YOUR_API_KEY` in `YoutubeCommentScrapper.py` with your actual API key.
+2. Set up Python 3.12 environment:
 
-4. Run the application:
+   ```
+   # Using pyenv
+   pyenv install 3.12.2
+   pyenv local 3.12.2
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
 
+3. Install the required dependencies:
+
+   ```
+   pip install -r requirements.txt
+   ```
+
+4. Obtain a YouTube Data API key from the [Google Cloud Console](https://console.cloud.google.com/).
+
+5. Run the application using the compatibility script:
+
+   ```
+   python run.py
+   ```
+
+   Or directly with Streamlit:
+
+   ```
+   streamlit run app.py
+   ```
 
 ## Usage 🚀
 
 1. Open the application in your web browser.
 
-2. Enter a valid YouTube link in the sidebar. 🔗
+2. Enter your YouTube Data API key in the sidebar. The key will be securely stored in your browser session. 🔑
 
-3. Wait for the application to retrieve the video and channel information, save the comments to a CSV file, perform sentiment analysis, and display the results. ⌛
+3. Enter a valid YouTube link in the sidebar. 🔗
 
-4. Explore the sentiment analysis results, video information, and channel information. 📈📺
+4. Wait for the application to retrieve the video and channel information, save the comments to a CSV file, and display the results. ⌛
+
+5. Explore the video information and channel information. 📺
+
+6. Download the comments as a CSV file using the download button in the sidebar. 📥
 
 ## Contributing 🤝
 
@@ -39,7 +70,3 @@ Contributions are welcome! If you find any issues or have suggestions for improv
 ## License 📄
 
 This project is licensed under the [MIT License](LICENSE).
-
-
-
-
