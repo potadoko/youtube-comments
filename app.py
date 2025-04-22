@@ -2,8 +2,8 @@ import streamlit as st
 import warnings
 import sys
 import re
-import clipboard
 import time
+from st_copy_to_clipboard import st_copy_to_clipboard
 
 # Filter deprecation warnings
 warnings.filterwarnings('ignore', category=DeprecationWarning)
@@ -69,7 +69,7 @@ if api_key != st.session_state.api_key:
 
 # Function to copy text content to clipboard
 def copy_to_clipboard(txt_content):
-    clipboard.copy(txt_content)
+    st_copy_to_clipboard(txt_content)
     st.session_state.copy_success = True
 
 # Function to load video data
