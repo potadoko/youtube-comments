@@ -8,16 +8,18 @@ from googleapiclient.errors import HttpError
 import warnings
 warnings.filterwarnings('ignore')
 
-# Replace with your own API key
-DEVELOPER_KEY = st.secrets["API_KEY"]
+# YouTube API configuration
 YOUTUBE_API_SERVICE_NAME = 'youtube'
 YOUTUBE_API_VERSION = 'v3'
-# Create a client object to interact with the YouTube API
-youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, developerKey=DEVELOPER_KEY)
+
+# Initialize youtube client with None, will be built when key is available
+youtube = None
 
 #video_id=extract_video_id(youtube_link)
 
 def get_channel_id(video_id):
+    # Access youtube client from session state
+    youtube = st.session_state.youtube
     response = youtube.videos().list(part='snippet', id=video_id).execute()
     channel_id = response['items'][0]['snippet']['channelId']
     return channel_id
@@ -26,6 +28,9 @@ def get_channel_id(video_id):
     
 
 def save_video_comments_to_csv(video_id):
+    # Access youtube client from session state
+    youtube = st.session_state.youtube
+    
     # Retrieve comments for the specified video using the comments().list() method
     comments = []
     results = youtube.commentThreads().list(
@@ -63,6 +68,8 @@ def save_video_comments_to_csv(video_id):
             
 def get_video_stats(video_id):
     try:
+        # Access youtube client from session state
+        youtube = st.session_state.youtube
         response = youtube.videos().list(
             part='statistics',
             id=video_id
