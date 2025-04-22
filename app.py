@@ -1,8 +1,8 @@
 import streamlit as st
-import os
 import warnings
 import sys
 import re
+import clipboard
 
 # Filter deprecation warnings
 warnings.filterwarnings('ignore', category=DeprecationWarning)
@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 # Print Python version for debugging
 print(f"Running Python {sys.version}", file=sys.stderr)
 
-from YoutubeCommentScrapper import save_video_comments_to_csv,get_channel_info,get_channel_id,get_video_stats
+from YoutubeCommentScraper import fetch_video_comments, generate_csv_content, generate_txt_content, get_video_details
 from googleapiclient.discovery import build
 
 # Function to extract video ID from YouTube link
@@ -29,15 +29,8 @@ if 'api_key' not in st.session_state:
     st.session_state.api_key = ""
     st.session_state.youtube = None
 
-
-def delete_non_matching_csv_files(directory_path, video_id):
-    for file_name in os.listdir(directory_path):
-        if not file_name.endswith('.csv'):
-            continue
-        if file_name == f'{video_id}.csv':
-            continue
-        os.remove(os.path.join(directory_path, file_name))
-
+if 'copy_success' not in st.session_state:
+    st.session_state.copy_success = False
 
 st.set_page_config(page_title='YouTube Comments Downloader', page_icon = 'LOGO.png', initial_sidebar_state = 'auto')
 #st.set_page_config(page_title=None, page_icon=None, layout="centered", initial_sidebar_state="auto", menu_items=None)
@@ -49,8 +42,9 @@ api_key = st.sidebar.text_input(
     "Enter YouTube API Key",
     value=st.session_state.api_key,
     type="password",
+    autocomplete="current-password",
     help="Your YouTube Data API v3 key from Google Cloud Console. It will be saved for your current session.",
-    key="api_key_input",
+    key="youtube_api_key",
     placeholder="Enter your API key here"
 )
 st.sidebar.caption("Your API key is stored securely in the session state and not shared.")
@@ -66,89 +60,91 @@ if api_key != st.session_state.api_key:
 
 st.sidebar.header("Enter YouTube Link")
 youtube_link = st.sidebar.text_input("Link")
-directory_path = os.getcwd()
-# hide_st_style = """
-#             <style>
-#             #MainMenu {visibility: hidden;}
-#             footer {visibility: hidden;}
-#             </style>
-#             """
-# st.markdown(hide_st_style, unsafe_allow_html=True)
+load_button = st.sidebar.button("Load")
 
 
-if youtube_link:
+if load_button and youtube_link:
     # Check if API key is provided
     if not st.session_state.api_key:
         st.error("Please enter your YouTube API Key in the sidebar to continue")
     else:
         video_id = extract_video_id(youtube_link)
         if video_id:
-            youtube = st.session_state.youtube
-            channel_id = get_channel_id(video_id)
-            st.sidebar.write("The video ID is:", video_id)
-            csv_file = save_video_comments_to_csv(video_id)
-            delete_non_matching_csv_files(directory_path,video_id)
-            st.sidebar.write("Comments saved to CSV!")
-            st.sidebar.download_button(label="Download Comments", data=open(csv_file, 'rb').read(), file_name=os.path.basename(csv_file), mime="text/csv")
+            st.sidebar.write("Video ID:", video_id)
 
-            #using fn
-            channel_info = get_channel_info(youtube,channel_id)
+            # Fetch comments once
+            comments = fetch_video_comments(video_id)
 
-        col1, col2 = st.columns(2)
+            # Generate CSV and TXT content in memory
+            csv_content = generate_csv_content(comments)
+            txt_content = generate_txt_content(comments)
 
-        st.title(" ")
-        col3, col4 ,col5 = st.columns(3)
+            st.sidebar.button("Copy to Clipboard", on_click=lambda: clipboard.copy(txt_content))
+
+            # Create download buttons
+            col1, col2 = st.sidebar.columns(2)
+            with col1:
+                st.download_button(
+                    label="Download CSV",
+                    data=csv_content.encode('utf-8'),
+                    file_name=f"{video_id}.csv",
+                    mime="text/csv"
+                )
+            with col2:
+                st.download_button(
+                    label="Download Text",
+                    data=txt_content.encode('utf-8'),
+                    file_name=f"{video_id}.txt",
+                    mime="text/plain"
+                )
+
+            # Get video details including title and statistics
+            video_details = get_video_details(video_id)
+
+            if video_details:
+                # Display video title
+                st.header(video_details['title'])
+
+                # Format numbers with commas for better readability
+                stats = video_details['statistics']
+                view_count = f"{int(stats.get('viewCount', 0)):,}"
+                like_count = f"{int(stats.get('likeCount', 0)):,}"
+                comment_count = f"{int(stats.get('commentCount', 0)):,}"
+
+                # Stats display
+                cols = st.columns(3)
+
+                with cols[0]:
+                    st.metric("Views", view_count)
+
+                with cols[1]:
+                    st.metric("Likes", like_count)
+
+                with cols[2]:
+                    st.metric("Comments", comment_count)
+
+            # Display the video
+            _, video_container, _ = st.columns([10, 80, 10])
+            video_container.video(data=youtube_link)
+
+            # Add a section for comments
+            st.markdown("### Comments")
 
 
-        with col3:
-           video_count=channel_info['video_count']
-           st.header("  Total Videos  ")
-           #st.subheader("Total Videos")
-           st.subheader(video_count)
-
-        with col4:
-           channel_created_date= channel_info['channel_created_date']
-           created_date = channel_created_date[:10]
-           st.header("Channel Created ")
-           st.subheader(created_date)
-
-        with col5:
-
-            st.header(" Subscriber_Count ")
-            st.subheader(channel_info["subscriber_count"])
-
-        st.title(" ")
-
-        stats = get_video_stats(video_id)
-
-        st.title("Video Information :")
-        col6, col7 ,col8 = st.columns(3)
-
-
-        with col6:
-            st.header("  Total Views  ")
-           #st.subheader("Total Videos")
-            st.subheader(stats["viewCount"])
-
-        with col7:
-           st.header(" Like Count ")
-           st.subheader(stats["likeCount"])
-
-
-        with col8:
-
-            st.header(" Comment Count ")
-            st.subheader(stats["commentCount"])
-
-        st.header(" ")
-
-
-        _, container, _ = st.columns([10, 80, 10])
-        container.video(data=youtube_link)
-
-        st.subheader("Channel Description ")
-        channel_description = channel_info['channel_description']
-        st.write(channel_description)
-
+            # Display comments in a read-only text area
+            st.text_area(
+                label="",
+                value=txt_content,
+                height=400,
+                key="comments-text-area",
+                disabled=False,  # Make it selectable but read-only looking
+                label_visibility="collapsed"
+            )
+elif load_button and not youtube_link:
+    st.error("Please enter a YouTube link")
 else:
-    st.error("Invalid YouTube link")
+    st.info("Enter a YouTube link and click 'Load' to view video information and download comments")
+
+# if st.session_state.copy_success:
+#     st.toast(f"Copied to clipboard!", icon='✅' )
+#     st.session_state.copy_success = False

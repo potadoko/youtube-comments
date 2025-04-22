@@ -21,17 +21,9 @@ youtube = None
 
 #video_id=extract_video_id(youtube_link)
 
-def get_channel_id(video_id):
-    # Access youtube client from session state
-    youtube = st.session_state.youtube
-    response = youtube.videos().list(part='snippet', id=video_id).execute()
-    channel_id = response['items'][0]['snippet']['channelId']
-    return channel_id
-
-#channel_id=get_channel_id(video_id)
 
 
-def save_video_comments_to_csv(video_id):
+def fetch_video_comments(video_id):
     try:
         # Access youtube client from session state
         youtube = st.session_state.youtube
@@ -77,42 +69,69 @@ def save_video_comments_to_csv(video_id):
             if "quotaExceeded" in str(e):
                 st.error("YouTube API quota exceeded. Please try again tomorrow or use a different API key.")
 
-        # Save the comments to a CSV file with the video ID as the filename
-        filename = video_id + '.csv'
-
-        if not comments:
-            st.warning("No comments were found or could be retrieved.")
-            # Create empty file with headers
-            with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
-                writer = csv.writer(csvfile)
-                writer.writerow(['Username','Comment'])
-            return filename
-
-        try:
-            with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
-                writer = csv.writer(csvfile)
-                writer.writerow(['Username','Comment'])
-                for comment in comments:
-                    # Handle potential encoding issues
-                    username = str(comment[0]).encode('utf-8', errors='replace').decode('utf-8')
-                    comment_text = str(comment[1]).encode('utf-8', errors='replace').decode('utf-8')
-                    writer.writerow([username, comment_text])
-        except Exception as e:
-            st.error(f"Error saving CSV file: {str(e)}")
-            traceback.print_exc(file=sys.stderr)
-
-        return filename
+        return comments
     except Exception as e:
         st.error(f"Unexpected error fetching comments: {str(e)}")
         traceback.print_exc(file=sys.stderr)
+        return []
 
-        # Create empty file with headers as fallback
-        filename = video_id + '.csv'
-        with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(['Username','Comment'])
-        return filename
+def generate_csv_content(comments):
+    """Generate CSV content from comments without writing to a file"""
+    import io
 
+    if not comments:
+        # Create a CSV with just headers
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Username','Comment'])
+        return output.getvalue()
+
+    try:
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Username','Comment'])
+
+        for comment in comments:
+            # Handle potential encoding issues
+            username = str(comment[0]).encode('utf-8', errors='replace').decode('utf-8')
+            comment_text = str(comment[1]).encode('utf-8', errors='replace').decode('utf-8')
+            writer.writerow([username, comment_text])
+
+        return output.getvalue()
+    except Exception as e:
+        st.error(f"Error generating CSV content: {str(e)}")
+        traceback.print_exc(file=sys.stderr)
+
+        # Return just headers as fallback
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Username','Comment'])
+        return output.getvalue()
+
+def get_video_details(video_id):
+    try:
+        # Access youtube client from session state
+        youtube = st.session_state.youtube
+        response = youtube.videos().list(
+            part='snippet,statistics',
+            id=video_id
+        ).execute()
+
+        if 'items' in response and len(response['items']) > 0:
+            video_data = response['items'][0]
+            return {
+                'title': video_data['snippet']['title'],
+                'statistics': video_data['statistics']
+            }
+        else:
+            st.error("Could not retrieve video details")
+            return None
+
+    except HttpError as error:
+        st.error(f'An error occurred: {error}')
+        return None
+
+# Keep this for backward compatibility
 def get_video_stats(video_id):
     try:
         # Access youtube client from session state
@@ -129,37 +148,20 @@ def get_video_stats(video_id):
         return None
 
 
+def generate_txt_content(comments):
+    """Generate text content from comments without writing to a file"""
+    if not comments:
+        return "No comments found"
 
-
-def get_channel_info(youtube, channel_id):
     try:
-        response = youtube.channels().list(
-            part='snippet,statistics,brandingSettings',
-            id=channel_id
-        ).execute()
-
-        channel_title = response['items'][0]['snippet']['title']
-        video_count = response['items'][0]['statistics']['videoCount']
-        channel_logo_url = response['items'][0]['snippet']['thumbnails']['high']['url']
-        channel_created_date = response['items'][0]['snippet']['publishedAt']
-        subscriber_count = response['items'][0]['statistics']['subscriberCount']
-        channel_description = response['items'][0]['snippet']['description']
-
-
-        channel_info = {
-            'channel_title': channel_title,
-            'video_count': video_count,
-            'channel_logo_url': channel_logo_url,
-            'channel_created_date': channel_created_date,
-            'subscriber_count': subscriber_count,
-            'channel_description': channel_description
-        }
-
-        return channel_info
-
-    except HttpError as error:
-        print(f'An error occurred: {error}')
-        return None
-
-
-
+        content = ""
+        for comment in comments:
+            # Handle potential encoding issues
+            username = str(comment[0]).encode('utf-8', errors='replace').decode('utf-8')
+            comment_text = str(comment[1]).encode('utf-8', errors='replace').decode('utf-8')
+            content += f"{username}: {comment_text}\n"
+        return content
+    except Exception as e:
+        st.error(f"Error generating TXT content: {str(e)}")
+        traceback.print_exc(file=sys.stderr)
+        return "Error generating comments"
