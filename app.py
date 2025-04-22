@@ -3,7 +3,6 @@ import warnings
 import sys
 import re
 import time
-from st_copy_to_clipboard import st_copy_to_clipboard
 
 # Filter deprecation warnings
 warnings.filterwarnings('ignore', category=DeprecationWarning)
@@ -41,7 +40,7 @@ if 'video_id' not in st.session_state:
 if 'last_loaded_time' not in st.session_state:
     st.session_state.last_loaded_time = None
 
-st.set_page_config(page_title='YouTube Comments Downloader', page_icon = 'LOGO.png', initial_sidebar_state = 'auto')
+st.set_page_config(page_title='YouTube Comments Downloader', page_icon = 'LOGO.png', initial_sidebar_state = 'expanded')
 #st.set_page_config(page_title=None, page_icon=None, layout="centered", initial_sidebar_state="auto", menu_items=None)
 st.sidebar.title("YouTube Comments Downloader")
 
@@ -66,11 +65,6 @@ if api_key != st.session_state.api_key:
         st.session_state.youtube = build('youtube', 'v3', developerKey=api_key)
     else:
         st.session_state.youtube = None
-
-# Function to copy text content to clipboard
-def copy_to_clipboard(txt_content):
-    st_copy_to_clipboard(txt_content)
-    st.session_state.copy_success = True
 
 # Function to load video data
 def load_video_data(youtube_link):
@@ -133,12 +127,12 @@ sidebar_button_container = st.sidebar.container()
 # Display copy and download buttons if content is available
 if video_id and txt_content and csv_content:
     with sidebar_button_container:
-        st.button(
-            "Copy to Clipboard",
-            key="copy_button",
-            on_click=copy_to_clipboard,
-            args=(txt_content,)
-        )
+        # st.button(
+        #     "Copy to Clipboard",
+        #     key="copy_button",
+        #     on_click=copy_to_clipboard,
+        #     args=(txt_content,)
+        # )
 
         # Create download buttons
         col1, col2 = st.columns(2)
